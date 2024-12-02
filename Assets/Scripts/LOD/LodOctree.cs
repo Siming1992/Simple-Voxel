@@ -49,7 +49,7 @@ namespace SimpleVoxed.LOD
         public void Init(float maxRootSize,byte maxDepth,byte chunkDepth)
         {
             rootNode = new MeshNode(0, float3.zero);
-            this.maxRootSize = this.maxRootSize;
+            this.maxRootSize = maxRootSize;
 
             this.maxDepth = maxDepth;
             this.chunkDepth = chunkDepth;
