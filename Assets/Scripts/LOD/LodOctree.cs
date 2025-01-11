@@ -1,63 +1,81 @@
-﻿
-
-using Unity.Mathematics;
+﻿using Unity.Mathematics;
+using UnityEngine;
+using static SimpleVoxed.Common.GeometryUtility;
 
 namespace SimpleVoxed.LOD
 {
     public class LodOctree
     {
-        static readonly float3[] NODE_OFFSETS =
+        private static readonly float3[] NODE_OFFSETS =
         {
-            new float3(-0.5f,-0.5f,-0.5f),
-            new float3(-0.5f, -0.5f, 0.5f),
-            new float3(-0.5f, 0.5f, -0.5f),
-            new float3(-0.5f, 0.5f, 0.5f),
-            new float3(0.5f, -0.5f, -0.5f),
-            new float3(0.5f, -0.5f, 0.5f),
-            new float3(0.5f, 0.5f, -0.5f),
-            new float3(0.5f, 0.5f, 0.5f)
+            new(-0.5f, -0.5f, -0.5f),
+            new(-0.5f, -0.5f, 0.5f),
+            new(-0.5f, 0.5f, -0.5f),
+            new(-0.5f, 0.5f, 0.5f),
+            new(0.5f, -0.5f, -0.5f),
+            new(0.5f, -0.5f, 0.5f),
+            new(0.5f, 0.5f, -0.5f),
+            new(0.5f, 0.5f, 0.5f)
         };
 
-        class MeshNode
-        {
-            //structure data
-            public byte depth;
-            public float3 position;
-            public MeshNode[] childs;
-            
-            //node data
-            public MeshChunk meshChunk;
+        private byte chunkDepth; //chunkDepth 5 equals chunkResolution 32*32*32
 
-            public MeshNode(byte depth, float3 position)
-            {
-                this.depth = depth;
-                this.position = position;
-                childs = new MeshNode[8];
+        private byte maxDepth; //max depth (in chunks)
 
-                meshChunk = null;
-            }
-        }
-
-        MeshNode rootNode;
-
-        private float maxRootSize;
+        private int maxRootSize;
+        private Transform parent;
+        private LodOctreeNode rootNode;
         private float voxelSize;
 
-        private byte maxDepth;      //max depth (in chunks)
-        private byte chunkDepth;    //chunkDepth 5 equals chunkResolution 32*32*32
-        
-        public void Init(float maxRootSize,byte maxDepth,byte chunkDepth)
+        public void Init(Transform parent, int maxRootSize, int chunkResolution)
         {
-            rootNode = new MeshNode(0, float3.zero);
             this.maxRootSize = maxRootSize;
+            this.parent = parent;
+            rootNode = new LodOctreeNode(parent, 0, float3.zero, maxRootSize);
 
-            this.maxDepth = maxDepth;
-            this.chunkDepth = chunkDepth;
+            chunkDepth = (byte)math.log2(chunkResolution);
+            maxDepth = (byte)(math.log2(maxRootSize) - chunkDepth);
 
             voxelSize = maxRootSize / math.exp2(maxDepth + chunkDepth);
         }
 
-        float3 GetChildCenter(float3 parentCenter,float childSize,int childIndex)
+        public void SetLODCenter(float3 center)
+        {
+            if (math.length(center) > maxRootSize) center = math.normalize(center) * maxRootSize;
+
+            SetLODCenter(rootNode, center);
+        }
+
+        private void SetLODCenter(LodOctreeNode node, float3 lodCenter)
+        {
+            var nodeSize = maxRootSize / math.exp2(node.depth);
+
+            if (node.depth == maxDepth || !IsWithinReach(lodCenter, node))
+            {
+                if (!node.isLeaf) node.isLeaf = true;
+            }
+            else
+            {
+                node.isLeaf = false;
+
+                for (var i = 0; i < 8; i++)
+                {
+                    if (node.childs[i] == null)
+                        node.childs[i] = new LodOctreeNode(parent, (byte)(node.depth + 1), GetChildCenter(node.position, nodeSize * 0.5f, i), nodeSize * 0.5f);
+
+                    SetLODCenter(node.childs[i], lodCenter);
+                }
+            }
+        }
+
+        private bool IsWithinReach(float3 targetPosition, LodOctreeNode node)
+        {
+            var nodeSize = maxRootSize / math.exp2(node.depth);
+            var distanceToNode = GetDistanceToSurface(targetPosition, GetABB(node.position, nodeSize));
+            return distanceToNode < nodeSize;
+        }
+
+        private float3 GetChildCenter(float3 parentCenter, float childSize, int childIndex)
         {
             return parentCenter + NODE_OFFSETS[childIndex] * childSize;
         }

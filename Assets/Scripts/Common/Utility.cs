@@ -1,7 +1,10 @@
-public static class Utility
+namespace SimpleVoxed.Common
 {
-    public static bool IsPowerOfTwo(int x)
+    public static class Utility
     {
-        return (x & (x - 1)) == 0;
+        public static bool IsPowerOfTwo(int x)
+        {
+            return (x & (x - 1)) == 0;
+        }
     }
 }
