@@ -9,31 +9,29 @@ namespace SimpleVoxed.LOD
 
         //structure data
         public byte depth;
+
+        public bool isRecentLeaf;
+        public bool isDirty;
         public bool isLeaf;
         public MeshChunk meshChunk;
 
         //node data
-        private readonly Transform parent;
         public float3 position;
         public float size;
 
-        public LodOctreeNode(Transform parent, byte depth, float3 position, float nodeSize)
+        public LodOctreeNode(byte depth, float3 position, float nodeSize)
         {
-            this.parent = parent;
-
             this.depth = depth;
             this.position = position;
             size = nodeSize;
             childs = new LodOctreeNode[8];
 
+            isRecentLeaf = false;
+            isDirty = false;
             isLeaf = false;
-        }
 
-        private MeshChunk CreateMeshChunk(float3 localPosition, float size)
-        {
-            meshChunk = MeshChunkPool.Instance.GetChunk();
-            meshChunk.Init(parent, localPosition, size);
-            return meshChunk;
+            meshChunk = null;
+            // meshChunk = CreateMeshChunk(position, nodeSize);
         }
     }
 }
